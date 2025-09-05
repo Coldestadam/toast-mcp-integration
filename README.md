@@ -3,6 +3,26 @@
 ## 1. Overview
 This project provides a **Model Context Protocol (MCP) server** that integrates with the **Toast API**. It enables Claude Desktop to interact with Toast data (such as products and sales) through MCP tools. The server is implemented in Python and uses [`uv`](https://github.com/astral-sh/uv) for environment and dependency management.
 
+### Project Structure
+```
+toast-mcp-integration/
+├── .env.example          # Example environment vars
+├── .gitignore            # Git ignore rules
+├── .python-version       # Python version pin
+├── pyproject.toml        # Project dependencies/config
+├── README.md             # Project documentation
+├── toast_api_client.py   # Toast API client code
+├── toast_mcp_server.py   # MCP server implementation
+├── uv.lock               # Dependency lockfile
+├── config/
+│   └── server-config.json # Server configuration
+├── docs/
+│   └── images/           # Architecture diagrams
+└── utils/
+    ├── client_utils.py   # Client helper functions
+    └── tools_utils.py    # Tools helper functions
+```
+
 ### Available Tools
 - **`get_sales_summary`** – Summarizes sales within a timeframe, including total revenue, total items sold, and item-level breakdowns.  
 - **`get_top_items`** – Returns the top-selling items over the past `n` days, ranked by quantity sold and revenue.  
@@ -113,27 +133,27 @@ Even if I were to continue working on this project with the implementation of SQ
 ---
 
 ### 3b. Toast Authentication
-I placed my keys in an `.env` file that is forbidden to be pushed to github using `.gitignore`. I did provide a `.env.example` file of the environmental variables that will work with my code, its the responsibility of the developer to place the secrets they recieved into the file.
+I placed my keys in an `.env` file that is forbidden to be pushed to github using `.gitignore`. I did provide a `.env.example` file of the environmental variables that will work with my code, its the responsibility of the developer to place the secrets they received into the file.
 
 ### 3c. Challenges and Solutions
 There were many challenges to this project, below is a list!
 1. Token Expiry
    * Problem: The Oauth2 token that Toast API services provides expires in 24 hours, not the original 5 hours as stated in the project pdf
-   * Solution: When building API Client, authorizing the client everytime gave a token and an expire time given by the API service itself. I made sure in the case the server was running while it is about to expire, Toast API services allow us to generate a new token a miniute before expiring.
+   * Solution: When building API Client, authorizing the client everytime gave a token and an expire time given by the API service itself. I made sure in the case the server was running while it is about to expire, Toast API services allow us to generate a new token a minute before expiring.
 2. Bug Encountered in the [`/orders/v2/ordersBulk`](https://doc.toasttab.com/openapi/orders/operation/ordersBulkGet/) API endpoint in being able to get all ordered items
-   * Problem: There are nested fields where we extract items from orders, but for some reason the output json schema allows nested items within items. Therefore some items were excluded from my code to exract it in function `get_orders_df()` in `utils/client_utils.py`.
+   * Problem: There are nested fields where we extract items from orders, but for some reason the output json schema allows nested items within items. Therefore some items were excluded from my code to extract it in function `get_orders_df()` in `utils/client_utils.py`.
    * Solution: After seeing that bug, I made sure to extract those nested items as well.
 3. When trying the `get_sales_summary()` tool in MCP Inspector, I get this error: `MCP error -32001: Request timed out`
    * Problem: There was a Request Timeout for when I was trying tool `get_sales_summary()` to extract sales data that was for a timeframe of a month.
    * Solution: The MCP Client configuration of the MCP Instructor is changeable, the RequestTimeout was set to 60,000ms (60 sec) instead of (30 sec)
-4. Configuring Tools to filter by restaurant felt useless since there is only two active buisnesses
-   * Problem: I created my tools and overall Data Structure to be able to fiter by restaurant, since there were a total of 8-9 menus given by the [`/menus/v2/menus`](https://doc.toasttab.com/openapi/menus/operation/menusGet/) endpoint.
+4. Configuring Tools to filter by restaurant felt useless since there is only two active businesses
+   * Problem: I created my tools and overall Data Structure to be able to filter by restaurant, since there were a total of 8-9 menus given by the [`/menus/v2/menus`](https://doc.toasttab.com/openapi/menus/operation/menusGet/) endpoint.
    * Solution: No solution, just something I encountered.
 5. The Menu Resource is not being reached within Claude Desktop with Human Messages
    **Something to work on**
 6. Overall Data Structure
    * Problem: Took a lot of time to figure out what was the best way to extract information from Toast API services! The JSON Schemas of both the `/menus/v2/menus` and `/orders/v2/ordersBulk` were not documented well and super huge to have to sift through by hand. It was hard then to organize myself, with all information to see how to construct organized Data Table Schemas (Or in my case Pandas Dataframes).
-   * Solution: Wednesday night, I took out my notebook and by hand wrote all the requirements of the tools and figured out when data it needs to be answered, which a lot of the tools had overlapping requirements. Then I wrote all things I can extract from the endpoints, and wrote down how to access the datafields in the JSON Reponses of both endpoints. The ending solution was to have two tables, one for menus and for orders, where menus was not dependent on the tools but orders was extracted everytime by a tool call. The menu table was used to pair all ordered items to the name of the restaurant and the item group (category) of each item in orders.
+   * Solution: Wednesday night, I took out my notebook and by hand wrote all the requirements of the tools and figured out when data it needs to be answered, which a lot of the tools had overlapping requirements. Then I wrote all things I can extract from the endpoints, and wrote down how to access the datafields in the JSON Responses of both endpoints. The ending solution was to have two tables, one for menus and for orders, where menus was not dependent on the tools but orders was extracted everytime by a tool call. The menu table was used to pair all ordered items to the name of the restaurant and the item group (category) of each item in orders.
    
 ### 3d. Performance Considerations
 I did not have time to make this more efficient, but here are things I would try:
