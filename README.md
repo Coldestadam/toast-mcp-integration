@@ -85,7 +85,32 @@ To integrate with **Claude Desktop**, you need to edit its configuration file.
 ## 3. Open Questions (Personal Reflections)
 
 ### 3a. Architecture Decisions
-*Placeholder: Describe why you chose the MCP server structure, how you organized tools (`tools/products.py`, `tools/sales.py`), and why you used `uv`.*
+
+Below are diagrams illustrating the architecture and design decisions:
+
+![MCP Server Architecture](docs/images/MCP-Server-Architecture.png)  
+*Figure 1: MCP Server Architecture*
+
+This figure above is the MCP Server Architecture with how it works with an MCP Client, this is structured architecture set by the MCP standard itself.
+
+---
+![MCP Server API Connection](docs/images/MCP-Server-API-Connection.png)  
+*Figure 2: MCP Server API Connection*
+
+<u>**Quick Description: First Draft but Super Inefficient**</u>
+
+This is a first-step server API connection to have it working, but it is obviously inefficient.
+It is inefficient for always having to call the API for every tool call, which is not good. We should store API calls in a relational SQL Database and with a cache layer to be able to avoid multiple repeating calls to the API.
+
+---
+![Data Architecture](docs/images/Data-Architecture.png)  
+*Figure 3: Data Architecture*
+
+This is the Data Architecture that took me the most time in this project, in terms of both writing the code for the client to process JSON Responses of the API, but also how to organize it into different tables.
+
+Even if I were to continue working on this project with the implementation of SQL Databases, this is still the architecture I would use!
+
+---
 
 ### 3b. Toast Authentication
 I placed my keys in an `.env` file that is forbidden to be pushed to github using `.gitignore`. I did provide a `.env.example` file of the environmental variables that will work with my code, its the responsibility of the developer to place the secrets they recieved into the file.
