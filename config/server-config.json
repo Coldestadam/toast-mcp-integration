@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "toast-mcp": {
+      "command": "/absolute/path/to/uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/toast-mcp-integration",
+        "run",
+        "toast_mcp_server.py"
+      ]
+    }
+  }
+}
