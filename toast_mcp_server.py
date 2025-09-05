@@ -2,7 +2,9 @@ import os
 import pandas as pd
 from mcp.server.fastmcp import FastMCP
 from toast_api_client import ToastAPIClient
-from datetime import datetime, timedelta, timezone
+
+# Importing helper functions from utils
+from utils.tools_utils import get_date_range
 
 # Loading api credentials from environment variables
 from dotenv import load_dotenv
@@ -27,7 +29,7 @@ client = ToastAPIClient(base_url=TOAST_API_BASE_URL,
 
 # Adding first tool: get_sales_summary()
 @mcp.tool()
-async def get_sales_summary(start_date: str, end_date: str, restaurant: str | None = None) -> dict:
+async def get_sales_summary(start_date: str, end_date: str, restaurant: str | None = None) -> dict|None:
     """
     Uses ToastAPIClient to use method "get_orders(start_date, end_date)" sales data 
     of orders within a timeframe. This tool calculates the total number of revenue, number 
@@ -53,9 +55,9 @@ async def get_sales_summary(start_date: str, end_date: str, restaurant: str | No
     # Use API Client to get a pandas DataFrame of all the orders between (startDate, endDate)
     orders_df = await client.get_orders(start_date, end_date)
 
-    # If no orders are returned, return empty summary
-    if orders_df.empty:
-        return {"total_revenue": 0, "total_items_sold": 0, "items": []}
+    # If no orders are returned, return None
+    if orders_df is None:
+        return None
 
     # If wanting to filter by restaurant, get only items sold at that restaurant
     if restaurant:
@@ -89,7 +91,7 @@ async def get_sales_summary(start_date: str, end_date: str, restaurant: str | No
 
 # Adding second tool: get_top_items()
 @mcp.tool()
-async def get_top_items(days: int, limit: int = 5, restaurant: str | None = None) -> dict:
+async def get_top_items(days: int, limit: int = 5, restaurant: str | None = None) -> dict|None:
     """
     Uses ToastAPIClient to fetch orders within the last `days` days and returns the top-selling items.
     This tool calculates the quantity sold and total revenue for each item, ranks them, and returns
@@ -112,15 +114,13 @@ async def get_top_items(days: int, limit: int = 5, restaurant: str | None = None
     
     # Configuring start_date and end_date using current date and time in ISO-8601 format
     start_date, end_date = get_date_range(days=days)
-    print("Start Date:", start_date)
-    print("End Date:", end_date)
     
     # Use API Client to get a pandas DataFrame of all the orders between (startDate, endDate)
     orders_df = await client.get_orders(start_date, end_date)
 
-    # If no orders are returned, return empty summary, this should implement an error process
-    if orders_df.empty:
-        return {"period": "Last 0 Days", "top_items":[]}
+    # If no orders are returned, return None
+    if orders_df is None:
+        return None
     
     if restaurant:
         orders_df = orders_df.loc[orders_df["restaurant_name"].str.lower() == restaurant.lower(), :]
@@ -133,8 +133,8 @@ async def get_top_items(days: int, limit: int = 5, restaurant: str | None = None
         .reset_index()
     )
 
-    # Add rank by quantity sold (ascending)
-    grouped["rank"] = grouped["quantity_sold"].rank(method="dense", ascending=True).astype(int)
+    # Add rank by quantity sold (descending)
+    grouped["rank"] = grouped["quantity_sold"].rank(method="dense", ascending=False).astype(int)
 
     # Sort by quantity sold descending; get the greatest selling first
     grouped = grouped.sort_values(by="quantity_sold", ascending=False)
@@ -152,7 +152,7 @@ async def get_top_items(days: int, limit: int = 5, restaurant: str | None = None
 
 # Adding third tool: get_product_mix()
 @mcp.tool()
-async def get_product_mix(start_date: str, end_date: str, restaurant: str | None = None) -> dict:
+async def get_product_mix(start_date: str, end_date: str, restaurant: str | None = None) -> dict|None:
     """
     Uses ToastAPIClient to fetch orders within a specified timeframe and calculates the product mix
     by grouping items into their respective item groups. This tool summarizes the quantity sold and
@@ -171,9 +171,9 @@ async def get_product_mix(start_date: str, end_date: str, restaurant: str | None
     # Use API Client to get a pandas DataFrame of all the orders between (startDate, endDate)
     orders_df = await client.get_orders(start_date, end_date)
 
-    # If no orders are returned, return empty summary
-    if orders_df.empty:
-        return {}
+    # If no orders are returned, return None
+    if orders_df is None:
+        return None
 
     # If wanting to filter by restaurant, get only items sold at that restaurant
     if restaurant:
@@ -203,37 +203,6 @@ async def get_menus_resource() -> list[dict]:
         return []
     return menus_df.to_dict(orient="records")
 
-
-def get_date_range(days: int = 1) -> tuple[str, str]:
-    """
-    Returns a tuple of (start_date, end_date) in Toast API required format: yyyy-MM-dd'T'HH:mm:ss.SSSZ
-    Example: 2016-01-01T14:13:12.000+0400
-    """
-    end_dt = datetime.now(timezone.utc).replace(microsecond=0)
-    start_dt = end_dt - timedelta(days=days)
-
-    # Format with milliseconds and timezone offset (+0000 for UTC)
-    end_date = end_dt.strftime("%Y-%m-%dT%H:%M:%S.000+0000")
-    start_date = start_dt.strftime("%Y-%m-%dT%H:%M:%S.000+0000")
-
-    return start_date, end_date
-
 if __name__ == "__main__":
     # Initialize and run the server
     mcp.run(transport='stdio')
-
-
-# import asyncio
-
-# async def main():
-#     # days = 3
-#     # output = await get_top_items(days)
-
-#     start_date = "2025-09-01T00:00:00.000Z"
-#     end_date = "2025-09-02T00:00:00.000Z"
-#     #output = await get_sales_summary(start_date, end_date)
-#     output = await get_product_mix(start_date, end_date)
-#     print(output)
-
-# if __name__ == "__main__":
-#     asyncio.run(main())
